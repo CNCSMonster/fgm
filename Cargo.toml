@@ -1,11 +1,13 @@
 [package]
 name = "fgm"
 authors = ["cncsmonster <cncsmonster@163.com>"]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "GPL-3.0"
 description = "Fast and simple go version manager"
 repository = "https://github.com/cncsmonster/fgm"
+readme = "readme.md"
+
 
 [dependencies]
 anyhow = "1.0.89"
