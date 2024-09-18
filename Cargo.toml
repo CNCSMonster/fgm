@@ -1,0 +1,18 @@
+[package]
+name = "fgm"
+authors = ["cncsmonster <cncsmonster@163.com>"]
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0"
+description = "Fast and simple go version manager"
+repository = "https://github.com/cncsmonster/fgm"
+
+[dependencies]
+anyhow = "1.0.89"
+clap = { version = "4.5.17", features = ["derive"] }
+flate2 = "1.0.33"
+reqwest = { version = "0.12.7", features = ["blocking"] }
+scraper = "0.20.0"
+tar = "0.4.41"
+
+[features]
