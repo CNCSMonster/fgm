@@ -244,8 +244,9 @@ pub fn _use(cf: &FgmContext, version: &str) -> Result<()> {
 
 pub fn current_version(ctx: &FgmContext) -> Result<String> {
     let gate_path = Path::new(&ctx.gate_path);
-    let target_path = fs::read_link(gate_path)?;
+    let target_path = fs::read_link(gate_path)?.canonicalize()?;
     let target_path = target_path.to_str().ok_or(anyhow!(""))?;
+
     let installations_dir = Path::new(&ctx.installations_dir).canonicalize()?;
 
     let prefix = format!("{}/", installations_dir.to_str().ok_or(anyhow!(""))?);

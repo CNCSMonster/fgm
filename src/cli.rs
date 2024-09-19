@@ -2,8 +2,9 @@ use anyhow::Result;
 use clap::Parser;
 
 use crate::{
-    _use, config::FgmContext, current_version, init_script, install, list_installed, list_remote,
-    uninstall, update,
+    _use,
+    config::{count_config_path, count_remotes_index_path, FgmContext},
+    current_version, init_script, install, list_installed, list_remote, uninstall, update,
 };
 
 #[derive(Parser, Debug)]
@@ -81,6 +82,11 @@ impl Subcommand {
                 current_version(ctx).unwrap_or("not version selected".to_owned())
             ),
             Subcommand::Config => {
+                println!("## Config Paths\n");
+                println!("config_path: {:?}", count_config_path().ok());
+                println!("remotes_index: {:?}", count_remotes_index_path().ok());
+
+                println!("\n## Configurations\n");
                 println!("installations_dir: {}", ctx.installations_dir);
                 println!("gate_path: {}", ctx.gate_path);
                 println!("remote_source: {}", ctx.remote_source);
