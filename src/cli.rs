@@ -76,9 +76,6 @@ pub enum Subcommand {
     /// eval "$(fgm completions  --shell <YOUR_SHELL>)"
     /// ```
     /// where `<YOUR_SHELL>` is the shell you are using.
-    ///
-    /// for `fgm install <version>` completions, we have extra completions only available for bash/zsh,
-    /// which could complete the version number.
     Completions {
         #[clap(short, long, default_value = "bash")]
         shell: clap_complete::Shell,
