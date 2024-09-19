@@ -67,9 +67,9 @@ pub fn count_remotes_index_path() -> Result<String> {
     let data_home = std::env::var(XDG_DATA_HOME).map(|v| format!("{}/fgm", v));
     let data_home = match data_home {
         Ok(v) => v,
-        Err(_) => std::env::var("HOME").map(|v| format!("{}/.fgm", v))?,
+        Err(_) => std::env::var("HOME").map(|v| format!("{}/.config/fgm", v))?,
     };
-    let index_path = format!("{}/remotes.toml", data_home);
+    let index_path = format!("{}/remotes", data_home);
     Ok(index_path)
 }
 

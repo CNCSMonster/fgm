@@ -10,28 +10,43 @@ use std::{
 };
 
 use anyhow::{anyhow, Context, Result};
+use clap::CommandFactory;
+use clap_complete::Generator;
 use config::{count_remotes_index_path, FgmContext};
+use itertools::Itertools;
 use mpsc::must_write;
 use scraper::{Html, Selector};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone)]
 pub struct DownloadLink {
     pub filename: String,
     pub link: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Links {
-    pub links: Vec<DownloadLink>,
+impl DownloadLink {
+    pub fn try_from_version(version: &str) -> Result<Self> {
+        let sys_arch = arch::system_arch();
+        let d = Self {
+            filename: format!("go{}.{}.tar.gz", version, sys_arch),
+            link: format!("https://go.dev/dl/go{}.{}.tar.gz", version, sys_arch),
+        };
+
+        Ok(d)
+    }
 }
 
 pub fn get_remotes(cf: &FgmContext) -> Result<Vec<DownloadLink>> {
     if !cf.update {
         if let Ok(remote_index) = count_remotes_index_path() {
             if let Ok(toml_str) = fs::read_to_string(&remote_index) {
-                let links = toml::from_str::<Links>(&toml_str).with_context(|| context!())?;
-                let remotes: Vec<DownloadLink> = links.links;
+                let lines = toml_str.lines().collect::<Vec<_>>();
+                let remotes: Vec<DownloadLink> = lines
+                    .into_iter()
+                    .filter_map(|line| {
+                        let line = line.trim();
+                        DownloadLink::try_from_version(line).ok()
+                    })
+                    .collect();
                 return Ok(remotes);
             }
         }
@@ -43,8 +58,6 @@ pub fn get_remotes(cf: &FgmContext) -> Result<Vec<DownloadLink>> {
         .text()
         .unwrap();
     let dl = dl.as_str();
-
-    // 假设你已经有了HTML内容，这里我们用一个字符串来模拟
 
     // 解析HTML
     let document = Html::parse_document(dl);
@@ -64,12 +77,17 @@ pub fn get_remotes(cf: &FgmContext) -> Result<Vec<DownloadLink>> {
         }
     }
 
-    let remote_index = count_remotes_index_path().with_context(|| context!())?;
-    let toml_str = toml::to_string_pretty(&Links {
-        links: remotes.to_vec(),
-    })
-    .with_context(|| context!())?;
-    must_write(remote_index, &toml_str).with_context(|| context!())?;
+    let remote_index_path = count_remotes_index_path().with_context(|| context!())?;
+    let mut versions = vec![];
+    for r in &remotes {
+        if let Some(version) = r.filename.strip_prefix("go") {
+            if let Some(version) = version.strip_suffix(&format!(".{}.tar.gz", system_arch)) {
+                versions.push(version.to_string());
+            }
+        }
+    }
+    let versions = versions.into_iter().unique().format("\n");
+    must_write(remote_index_path, &format!("{versions}")).with_context(|| context!())?;
 
     Ok(remotes)
 }
@@ -97,18 +115,22 @@ pub fn get_installed(cf: &FgmContext) -> Result<Vec<String>> {
 }
 
 pub fn update(cf: &FgmContext) -> Result<()> {
+    println!("Updating remotes index in {}", count_remotes_index_path()?);
+
     let mut ctx = cf.clone();
     ctx.update = true;
-    println!("Updating remotes index in {}", count_remotes_index_path()?);
-    list_remote(&ctx, false)?;
+    get_remotes(&ctx)?;
     Ok(())
 }
 
-pub fn list_remote(cf: &FgmContext, sort: bool) -> Result<()> {
+pub fn list_remote(cf: &FgmContext, sort: bool, reverse: bool) -> Result<()> {
     let mut d = get_remotes(cf)?;
     let suffix = format!(".{}.tar.gz", arch::system_arch());
     if sort {
         d.sort_by(|a, b| a.filename.cmp(&b.filename));
+    }
+    if reverse {
+        d.reverse();
     }
     for i in d {
         if let Some(version) = i.filename.strip_suffix(&suffix) {
@@ -120,11 +142,14 @@ pub fn list_remote(cf: &FgmContext, sort: bool) -> Result<()> {
     Ok(())
 }
 
-pub fn list_installed(cf: &FgmContext, sort: bool) {
+pub fn list_installed(cf: &FgmContext, sort: bool, reverse: bool) {
     let mut d = get_installed(cf).unwrap_or_default();
     let suffix = format!(".{}", arch::system_arch());
     if sort {
         d.sort();
+    }
+    if reverse {
+        d.reverse();
     }
     d.retain(|x| x.ends_with(&suffix));
     let current_version = current_version(cf).ok();
@@ -265,4 +290,12 @@ pub fn current_version(ctx: &FgmContext) -> Result<String> {
 // 生成设置环境变量的脚本
 pub fn init_script(config: &FgmContext) -> String {
     format!("export PATH={}/bin:$PATH", config.gate_path)
+}
+
+pub fn gen_completions(shell: clap_complete::Shell) -> Result<()> {
+    let mut app = cli::Cli::command();
+    let mut stdout = std::io::stdout();
+    app.build();
+    shell.generate(&app, &mut stdout);
+    Ok(())
 }

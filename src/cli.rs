@@ -4,7 +4,8 @@ use clap::Parser;
 use crate::{
     _use,
     config::{count_config_path, count_remotes_index_path, FgmContext},
-    current_version, init_script, install, list_installed, list_remote, uninstall, update,
+    current_version, gen_completions, init_script, install, list_installed, list_remote, uninstall,
+    update,
 };
 
 #[derive(Parser, Debug)]
@@ -21,17 +22,24 @@ pub enum Subcommand {
         version: String,
     },
     /// List installed versions
-    List {
+    #[clap(name = "list",visible_aliases = &["ls"])]
+    LsLocal {
         // sort
         #[clap(short, long)]
         sort: bool,
+        // reverse
+        #[clap(short, long)]
+        reverse: bool,
     },
     /// List all remote versions
-    #[clap(name = "list-remote")]
+    #[clap(name = "list-remote",visible_aliases = &["ls-remote"])]
     LsRemote {
         // sort
         #[clap(short, long)]
         sort: bool,
+        // reverse
+        #[clap(short, long)]
+        reverse: bool,
     },
     /// Uninstall a specific version of Go
     Uninstall {
@@ -56,6 +64,25 @@ pub enum Subcommand {
     Config,
     /// Update the fgm remotes index
     Update,
+    /// Generate shell completions, which can be evaluated to enable shell completions for fgm
+    ///
+    /// The `shell` argument specifies the shell for which completions should be generated.
+    ///
+    /// Supported shells are:
+    /// zsh, bash, fish, powershell, and elvish
+    ///
+    /// For example, to enable completions for bash, add to your shell profile:
+    /// ```sh
+    /// eval "$(fgm completions  --shell <YOUR_SHELL>)"
+    /// ```
+    /// where `<YOUR_SHELL>` is the shell you are using.
+    ///
+    /// for `fgm install <version>` completions, we have extra completions only available for bash/zsh,
+    /// which could complete the version number.
+    Completions {
+        #[clap(short, long, default_value = "bash")]
+        shell: clap_complete::Shell,
+    },
 }
 
 impl Subcommand {
@@ -64,11 +91,11 @@ impl Subcommand {
             Subcommand::Install { version } => {
                 install(ctx, version)?;
             }
-            Subcommand::List { sort } => {
-                list_installed(ctx, *sort);
+            Subcommand::LsLocal { sort, reverse } => {
+                list_installed(ctx, *sort, *reverse);
             }
-            Subcommand::LsRemote { sort } => {
-                list_remote(ctx, *sort)?;
+            Subcommand::LsRemote { sort, reverse } => {
+                list_remote(ctx, *sort, *reverse)?;
             }
             Subcommand::Uninstall { version } => {
                 uninstall(ctx, version)?;
@@ -94,6 +121,7 @@ impl Subcommand {
             Subcommand::Update => {
                 update(ctx)?;
             }
+            Subcommand::Completions { shell } => gen_completions(*shell)?,
         }
         Ok(())
     }

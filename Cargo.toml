@@ -1,9 +1,9 @@
 [package]
 name = "fgm"
 authors = ["cncsmonster <cncsmonster@163.com>"]
-version = "0.1.4"
+version = "0.2.0"
 edition = "2021"
-license = "GPL-3.0"
+license = "MIT OR Apache-2.0"
 description = "Fast and simple go version manager"
 repository = "https://github.com/cncsmonster/fgm"
 readme = "readme.md"
@@ -12,11 +12,12 @@ readme = "readme.md"
 [dependencies]
 anyhow = "1.0.89"
 clap = { version = "4.5.17", features = ["derive"] }
+clap_complete = "4.5.28"
 flate2 = "1.0.33"
+itertools = "0.13.0"
 reqwest = { version = "0.12.7", features = ["blocking"] }
 scraper = "0.20.0"
 serde = { version = "1.0.210", features = ["derive"] }
-serde_toml = "0.0.1"
 tar = "0.4.41"
 toml = "0.8.19"
 
