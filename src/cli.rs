@@ -7,6 +7,7 @@ use crate::{
 };
 
 #[derive(Parser, Debug)]
+#[clap(name = "fgm", version = env!("CARGO_PKG_VERSION"), bin_name = "fgm",about,long_about = None)]
 pub struct Cli {
     #[clap(subcommand)]
     pub sub: Subcommand,
