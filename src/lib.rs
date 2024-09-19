@@ -10,16 +10,33 @@ use std::{
 };
 
 use anyhow::{anyhow, Context, Result};
-use config::FgmConfig;
+use config::{count_remotes_index_path, FgmContext};
+use mpsc::must_write;
 use scraper::{Html, Selector};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DownloadLink {
     pub filename: String,
     pub link: String,
 }
 
-pub fn get_remotes(cf: &FgmConfig) -> Result<Vec<DownloadLink>> {
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Links {
+    pub links: Vec<DownloadLink>,
+}
+
+pub fn get_remotes(cf: &FgmContext) -> Result<Vec<DownloadLink>> {
+    if !cf.update {
+        if let Ok(remote_index) = count_remotes_index_path() {
+            if let Ok(toml_str) = fs::read_to_string(&remote_index) {
+                let links = toml::from_str::<Links>(&toml_str).with_context(|| context!())?;
+                let remotes: Vec<DownloadLink> = links.links;
+                return Ok(remotes);
+            }
+        }
+    }
+
     // 从网络读取一个文件
     let dl = reqwest::blocking::get(&cf.remote_source)
         .unwrap()
@@ -47,10 +64,17 @@ pub fn get_remotes(cf: &FgmConfig) -> Result<Vec<DownloadLink>> {
         }
     }
 
+    let remote_index = count_remotes_index_path().with_context(|| context!())?;
+    let toml_str = toml::to_string_pretty(&Links {
+        links: remotes.to_vec(),
+    })
+    .with_context(|| context!())?;
+    must_write(remote_index, &toml_str).with_context(|| context!())?;
+
     Ok(remotes)
 }
 
-pub fn get_installed(cf: &FgmConfig) -> Result<Vec<String>> {
+pub fn get_installed(cf: &FgmContext) -> Result<Vec<String>> {
     let download_dir = Path::new(&cf.installations_dir);
     let entries = fs::read_dir(download_dir)?;
     let mut installed = vec![];
@@ -72,7 +96,15 @@ pub fn get_installed(cf: &FgmConfig) -> Result<Vec<String>> {
     Ok(installed)
 }
 
-pub fn list_remote(cf: &FgmConfig, sort: bool) -> Result<()> {
+pub fn update(cf: &FgmContext) -> Result<()> {
+    let mut ctx = cf.clone();
+    ctx.update = true;
+    println!("Updating remotes index in {}", count_remotes_index_path()?);
+    list_remote(&ctx, false)?;
+    Ok(())
+}
+
+pub fn list_remote(cf: &FgmContext, sort: bool) -> Result<()> {
     let mut d = get_remotes(cf)?;
     let suffix = format!(".{}.tar.gz", arch::system_arch());
     if sort {
@@ -88,7 +120,7 @@ pub fn list_remote(cf: &FgmConfig, sort: bool) -> Result<()> {
     Ok(())
 }
 
-pub fn list_installed(cf: &FgmConfig, sort: bool) {
+pub fn list_installed(cf: &FgmContext, sort: bool) {
     let mut d = get_installed(cf).unwrap_or_default();
     let suffix = format!(".{}", arch::system_arch());
     if sort {
@@ -113,7 +145,7 @@ pub fn list_installed(cf: &FgmConfig, sort: bool) {
     }
 }
 
-pub fn install(config: &FgmConfig, version: &str) -> Result<()> {
+pub fn install(config: &FgmContext, version: &str) -> Result<()> {
     let d = find_link(config, version)?;
 
     let installations_dir: &str = &config.installations_dir;
@@ -121,9 +153,8 @@ pub fn install(config: &FgmConfig, version: &str) -> Result<()> {
     let download_dir = Path::new(installations_dir).canonicalize()?;
     let download_path = download_dir.join(&d.filename);
 
-    println!("Downloading {} from {}", d.filename, d.link);
+    println!("Downloading {:?} from {}", download_path, d.link);
 
-    dbg!(&d.link, &download_path);
     Command::new("wget")
         .arg(&d.link)
         .arg("-O")
@@ -145,11 +176,12 @@ pub fn install(config: &FgmConfig, version: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn find_link(config: &FgmConfig, version: &str) -> Result<DownloadLink> {
+pub fn find_link(config: &FgmContext, version: &str) -> Result<DownloadLink> {
     let d = get_remotes(config)?;
+    let suffix = format!(".{}.tar.gz", arch::system_arch());
     let target = d
         .iter()
-        .find(|x| x.filename.contains(version))
+        .find(|x| x.filename.eq(&format!("go{}{}", version, suffix)))
         .ok_or_else(|| {
             anyhow!(
                 "
@@ -160,7 +192,7 @@ pub fn find_link(config: &FgmConfig, version: &str) -> Result<DownloadLink> {
     Ok(target.clone())
 }
 
-pub fn uninstall(cf: &FgmConfig, version: &str) -> Result<()> {
+pub fn uninstall(cf: &FgmContext, version: &str) -> Result<()> {
     println!("Uninstalling {}", version);
     let d = find_link(cf, version)?;
     let download_dir = Path::new(&cf.installations_dir);
@@ -171,16 +203,14 @@ pub fn uninstall(cf: &FgmConfig, version: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn _use(cf: &FgmConfig, version: &str) -> Result<()> {
+pub fn _use(cf: &FgmContext, version: &str) -> Result<()> {
     // 首先查询是否下载了指定的版本
-    let d = find_link(cf, version).with_context(|| context!())?;
-    let download_dir = Path::new(&cf.installations_dir);
-    let go_dir = download_dir.join(d.filename.replace(".tar.gz", ""));
-    let go_dir = go_dir.canonicalize().with_context(|| context!())?;
-    println!("go_dir: {:?}", go_dir);
-    if !go_dir.exists() {
+    let installed = get_installed(cf).unwrap_or_default();
+    if !installed.contains(&format!("go{}.{}", version, arch::system_arch())) {
         install(cf, version)?;
     }
+    let go_dir =
+        Path::new(&cf.installations_dir).join(format!("go{}.{}", version, arch::system_arch()));
     println!("Using {}", version);
     // 如果下载了指定的版本，就直接使用
     let gate_path = Path::new(&cf.gate_path);
@@ -198,10 +228,7 @@ pub fn _use(cf: &FgmConfig, version: &str) -> Result<()> {
         .with_context(|| context!())?;
     create_dir_all(gate_path_dir).with_context(|| context!())?;
 
-    // 如果存在文件
-    if gate_path.try_exists().ok() == Some(true) {
-        fs::remove_dir_all(gate_path).with_context(|| context!())?;
-    }
+    let _ = fs::remove_file(gate_path);
 
     #[cfg(target_os = "linux")]
     {
@@ -215,19 +242,26 @@ pub fn _use(cf: &FgmConfig, version: &str) -> Result<()> {
     Ok(())
 }
 
-pub fn current_version(config: &FgmConfig) -> Result<String> {
-    // 查询/usr/local/go软链接指向的目录
-    let gate_path = Path::new(&config.gate_path);
+pub fn current_version(ctx: &FgmContext) -> Result<String> {
+    let gate_path = Path::new(&ctx.gate_path);
     let target_path = fs::read_link(gate_path)?;
     let target_path = target_path.to_str().ok_or(anyhow!(""))?;
-    let version = target_path
-        .strip_prefix(&config.installations_dir)
+    let installations_dir = Path::new(&ctx.installations_dir).canonicalize()?;
+
+    let prefix = format!("{}/", installations_dir.to_str().ok_or(anyhow!(""))?);
+    let version = target_path.strip_prefix(&prefix).ok_or(anyhow!(""))?;
+
+    let suffix = format!(".{}", arch::system_arch());
+    let version = version
+        .strip_prefix("go")
+        .ok_or(anyhow!(""))?
+        .strip_suffix(&suffix)
         .ok_or(anyhow!(""))?;
-    let version = version.strip_prefix("go").ok_or(anyhow!(""))?;
+
     Ok(version.to_string())
 }
 
 // 生成设置环境变量的脚本
-pub fn env(config: &FgmConfig) -> String {
+pub fn init_script(config: &FgmContext) -> String {
     format!("export PATH={}/bin:$PATH", config.gate_path)
 }

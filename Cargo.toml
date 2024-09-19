@@ -1,7 +1,7 @@
 [package]
 name = "fgm"
 authors = ["cncsmonster <cncsmonster@163.com>"]
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 license = "GPL-3.0"
 description = "Fast and simple go version manager"
@@ -15,6 +15,9 @@ clap = { version = "4.5.17", features = ["derive"] }
 flate2 = "1.0.33"
 reqwest = { version = "0.12.7", features = ["blocking"] }
 scraper = "0.20.0"
+serde = { version = "1.0.210", features = ["derive"] }
+serde_toml = "0.0.1"
 tar = "0.4.41"
+toml = "0.8.19"
 
 [features]

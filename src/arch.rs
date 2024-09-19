@@ -3,11 +3,6 @@ pub fn system_arch() -> String {
     format!("{}-{}", platform_name(), platform_arch())
 }
 
-#[test]
-fn t() {
-    dbg!(system_arch());
-}
-
 #[cfg(target_os = "macos")]
 pub fn platform_name() -> &'static str {
     "darwin"
