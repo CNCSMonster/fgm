@@ -2,6 +2,10 @@
 
 this project is inspired by [fnm](https://github.com/Schniz/fnm)
 
+## Installation
+
+`cargo install fgm` or `cargo binstall fgm`(Suggested)
+
 ## Quick Start
 
 add the following to your shell profile:
