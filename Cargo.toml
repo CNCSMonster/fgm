@@ -1,13 +1,16 @@
 [package]
 name = "fgm"
 authors = ["cncsmonster <cncsmonster@163.com>"]
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Fast and simple go version manager"
 repository = "https://github.com/cncsmonster/fgm"
 readme = "readme.md"
 
+[[bin]]
+name = "fgm"
+path = "src/main.rs"
 
 [workspace.dependencies]
 anyhow = "1.0.89"
