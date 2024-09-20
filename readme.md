@@ -7,7 +7,7 @@ this project is inspired by [fnm](https://github.com/Schniz/fnm)
 add the following to your shell profile:
 
 ```sh
-eval $(fgm env)
+eval $(fgm init)
 ```
 
 then you can use `fgm` to install go versions:
