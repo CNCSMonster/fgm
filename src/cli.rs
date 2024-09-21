@@ -20,6 +20,8 @@ pub enum Subcommand {
     /// Install a specific version of Go
     Install {
         version: String,
+        #[clap(short, long)]
+        update: bool,
     },
     /// List installed versions
     #[clap(name = "list",visible_aliases = &["ls"])]
@@ -40,6 +42,9 @@ pub enum Subcommand {
         // reverse
         #[clap(short, long)]
         reverse: bool,
+        // update cache
+        #[clap(short, long)]
+        update: bool,
     },
     /// Uninstall a specific version of Go
     Uninstall {
@@ -48,6 +53,8 @@ pub enum Subcommand {
     /// Use a specific version of Go
     Use {
         version: String,
+        #[clap(short, long)]
+        update: bool,
     },
     /// Print and set up required environment variables for fgm
     ///
@@ -83,21 +90,28 @@ pub enum Subcommand {
 }
 
 impl Subcommand {
-    pub fn run(&self, ctx: &FgmContext) -> Result<()> {
+    pub fn run(&self, ctx: &mut FgmContext) -> Result<()> {
         match self {
-            Subcommand::Install { version } => {
+            Subcommand::Install { version, update } => {
+                ctx.update = *update;
                 install(ctx, version)?;
             }
             Subcommand::LsLocal { sort, reverse } => {
                 list_installed(ctx, *sort, *reverse);
             }
-            Subcommand::LsRemote { sort, reverse } => {
+            Subcommand::LsRemote {
+                sort,
+                reverse,
+                update,
+            } => {
+                ctx.update = *update;
                 list_remote(ctx, *sort, *reverse)?;
             }
             Subcommand::Uninstall { version } => {
                 uninstall(ctx, version)?;
             }
-            Subcommand::Use { version } => {
+            Subcommand::Use { version, update } => {
+                ctx.update = *update;
                 _use(ctx, version)?;
             }
             Subcommand::Init => println!("{}", init_script(ctx)),

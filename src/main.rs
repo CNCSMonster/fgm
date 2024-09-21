@@ -17,9 +17,9 @@ fn init_context() -> FgmContext {
 }
 
 fn main() {
-    let ctx = init_context();
+    let mut ctx = init_context();
     let cli = cli::Cli::parse();
-    if let Err(e) = cli.sub.run(&ctx) {
+    if let Err(e) = cli.sub.run(&mut ctx) {
         println!("{:?}", e);
     }
 }
