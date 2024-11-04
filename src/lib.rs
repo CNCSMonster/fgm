@@ -3,10 +3,10 @@ pub mod cli;
 pub mod config;
 pub mod mpsc;
 
+use std::process::Command;
 use std::{
     fs::{self, create_dir_all},
     path::Path,
-    process::Command,
 };
 
 use anyhow::{anyhow, Context, Result};
@@ -287,7 +287,7 @@ pub fn current_version(ctx: &FgmContext) -> Result<String> {
     Ok(version.to_string())
 }
 
-// 生成设置环境变量的脚本
+// gen script for setting environment var
 pub fn init_script(config: &FgmContext) -> String {
     format!("export PATH={}/bin:$PATH", config.gate_path)
 }

@@ -12,7 +12,7 @@ fn init_context() -> FgmContext {
     });
     let config = fgm::config::FgmConfig::load(&config_path).unwrap_or_default();
     ctx.update_from_config(&config);
-
+    ctx.legalize_home_dir(); 
     ctx
 }
 

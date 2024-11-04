@@ -1,7 +1,7 @@
 [package]
 name = "fgm"
 authors = ["cncsmonster <cncsmonster@163.com>"]
-version = "0.2.3"
+version = "0.2.4"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Fast and simple go version manager"
@@ -29,6 +29,7 @@ toml = "0.8.19"
 anyhow.workspace = true
 clap = { workspace = true, features = ["derive"] }
 clap_complete.workspace = true
+dirs = "5.0.1"
 flate2.workspace = true
 itertools.workspace = true
 reqwest = { workspace = true, features = ["blocking"] }
