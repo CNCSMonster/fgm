@@ -1,5 +1,7 @@
 # fgm : fast go version manager
 
+> Note: now it's suggested to use [mise](https://github.com/jdx/mise) instead. Because mise can totally replace fgm and do better, so i decide to give up this project.
+
 this project is inspired by [fnm](https://github.com/Schniz/fnm)
 
 ## Installation
